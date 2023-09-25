@@ -1,0 +1,91 @@
+---
+title: "Chess_tournement"
+author: "Michael Robinson"
+date: "2023-09-21"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r Chess}
+
+library(stringr)
+library(DT)
+
+url <- "https://raw.githubusercontent.com/MRobinson112/Data_607_Project-1/main/tournamentinfo.txt"
+chess_data <- read.csv(url, skip = 3, header = FALSE)
+
+# split the information in the "chess_data" variable,  using a hyphen '-' as the delimiter.
+data_split <- str_split(chess_data[, ], "-", simplify = TRUE)
+
+# Retrieve Player Names 
+PlayerNames <- unlist(str_extract_all(data_split[, ], "\\w+[[:space:]]\\w+([[:space:]]\\w+)*"))
+
+# Remove empty rows
+PlayerNames <- PlayerNames[PlayerNames != ""]
+
+# Retrieve Player States.
+PlayerStates <- unlist(str_extract_all(data_split[, ], "[A-Z][A-Z][[:space:]]\\|"))
+
+# Split Player States on '|', removing the last column
+PlayerStates <- str_split(PlayerStates, "[[:space:]]\\|", simplify = TRUE)[, -2]
+
+# Retrieve Total Number of Points 
+TotalPoints <- unlist(str_extract_all(data_split[, ], "(\\d+)[.](\\d+)"))
+
+# Remove empty rows
+TotalPoints <- TotalPoints[TotalPoints != ""]
+
+# Extract Pre-Ratings 
+PreRatings <- unlist(str_extract_all(data_split[, ], "R:([[:space:]]+)([[:alnum:]]+)([[:space:]]*)"))
+PreRatings <- unlist(str_extract_all(PreRatings, "\\d+"))
+
+# Remove empty rows and convert to numeric
+PreRatings <- as.numeric(PreRatings[PreRatings != ""])
+
+# Extract Opponent data 
+opponent_data <- unlist(str_extract_all(data_split[, ], "([\\|][A-Z]([[:space:]]+)\\d*[\\|])([A-Z]([[:space:]]+)\\d*[\\|])*"))
+
+# Separate the Opponent data into distinct indexes for each opponent.
+Opponents <- unlist(str_extract_all(opponent_data, "\\d+"))
+
+# Remove empty rows
+Opponents <- Opponents[Opponents != ""]
+
+# Determine the mean ratings of opponents for each player.
+RatingAverages <- numeric(length = length(Opponents))
+for (i in 1:length(Opponents)) {
+  index <- as.integer(Opponents[i])
+  RatingAverages[i] <- mean(PreRatings[index])
+}
+
+# Check that  all components have the same length
+min_length <- min(length(PlayerNames), length(PlayerStates), length(TotalPoints), length(PreRatings), length(Opponents))
+PlayerNames <- PlayerNames[1:min_length]
+PlayerStates <- PlayerStates[1:min_length]
+TotalPoints <- TotalPoints[1:min_length]
+PreRatings <- PreRatings[1:min_length]
+RatingAverages <- RatingAverages[1:min_length]
+
+# Create the TournamentResults data frame
+TournamentResults <- data.frame(
+  PlayerName = PlayerNames,
+  PlayerState = PlayerStates,
+  TotalPoints = as.numeric(TotalPoints),
+  PlayerPreRating = PreRatings,
+  Avg_PreChess_Rating_Of_Opponent = RatingAverages
+)
+
+# Rename the columns
+colnames(TournamentResults) <- c(
+  "Player Name",
+  "Player State",
+  "Total Number of Points",
+  "Player's Pre-Rating",
+  "Average Pre Chess Rating of Opponents"
+)
+
+# Write the data to a CSV file
+write.csv(TournamentResults, file = "~/Data_607/Outcome.csv", row.names = FALSE)
+
+```
